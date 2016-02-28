@@ -13,111 +13,94 @@ class Datapoints(object):
 	def __init__(self, X_cord,Y_cord):
 		self.X_cordinate = X_cord
 		self.Y_cordinate = Y_cord
+	def __repr__(self):
+		return repr((self.X_cordinate, self.Y_cordinate))
 
-# Fetch the range for the datapoints 
-# Code Optimization: Can be performed during input read
-def getRange(dataSet):
-	#New in Python3
-	min_valX = sys.maxsize
-	min_valY = sys.maxsize
-	max_valX = -sys.maxsize-1
-	max_valY = -sys.maxsize-1
-	if not dataSet:
-		#ERROR CHECK HERE
-		return ((0,0),(0,0))
-	for val in dataSet:
-		X = float(val.X_cordinate)
-		Y = float(val.Y_cordinate)
-		if(X<min_valX):
-			min_valX = X
-		if(X>max_valX):
-			max_valX = X
-		if(Y<min_valY):
-			min_valY = Y
-		if(Y>max_valY):
-			max_valY = Y
-	Range_X = (min_valX,max_valX)
-	Range_Y = (min_valY,max_valY)
-	return (Range_X,Range_Y)
-
-def Insert_Key(Range_X, Range_Y,new_centroid_dict):
-	#Check: The random location should not coincide
-	while True:
-		get_random_X = random.uniform(Range_X[0],Range_X[1])
-		get_random_Y = random.uniform(Range_Y[0],Range_Y[1])
-
-		key = Datapoints(get_random_X,get_random_Y)
-		if key not in new_centroid_dict:
-			new_centroid_dict[key] = list()
-			break
-	return new_centroid_dict
-
-
-# To get the random location for initial K Centroid - ITERATION #1
-#ERROR CHECK: For now taking the location of all three centroid at Random
-def Randomize_Centroid_Iteration_1(Range_X,Range_Y,K):
-	new_centroid_dict = {}
-	for i in range(0, K):
-		new_centroid_dict = Insert_Key (Range_X,Range_Y,new_centroid_dict)
-	return new_centroid_dict
-
-#To fetch new location for Centroid
-def Update_Centroid_Location(Cluster_map,dataSet):
-	new_centroid_dict = {}
-	#Steps:
-	##Get the list of points for each key from the map
-	##Evaluate range
-	for key in Cluster_map:
-		Range_X,Range_Y = getRange(Cluster_map[key])
-		new_centroid_dict = Insert_Key (Range_X,Range_Y,new_centroid_dict)
-	return new_centroid_dict
-
-#Algorithm terminating condition
+#Algorithm terminate condition
 def AlgorithmStop(oldCentroid_dict,new_centroid_dict):
 	if not bool(oldCentroid_dict):
 		return False
-	return set(oldCentroid_dict) == set(new_centroid_dict)
+	for val in new_centroid_dict:
+		if val not in new_centroid_dict:
+			return False
+	return True
+			#return False
+	#return True
 
-def attach_To_Centroid(dataSet,Cluster_map,type_distance):
+def Insert_Key(get_mean_for_set,new_centroid_dict):
+	#Algo:
+	#Get mean of datapoins and set the respective key
+	#Avoiding the use of Numpy
+	for value in get_mean_for_set:
+		total_sum_X = value.X_cordinate
+		total_sum_Y = value.Y_cordinate
+	average_X = float(total_sum_X/len(get_mean_for_set))
+	average_Y = float(total_sum_Y/len(get_mean_for_set))
+	key = Datapoints(average_X,average_Y)
+	new_centroid_dict[key] = list()
+		#Based on the logic chance of having same keys is minimialized
+		#Confirm with Shiva
+	return new_centroid_dict
+
+def Update_Centroid_Location(Cluster_map):
+	new_centroid_dict = {}
+	for key in Cluster_map:
+		#Steps:
+		##Get the entire list of values for each Key
+		##Evaluate average to assign new key
+		new_centroid_dict = Insert_Key (Cluster_map[key],new_centroid_dict)
+	return new_centroid_dict
+
+def Randomize_Centroid_Iteration_1(dataSet,K):
+	new_centroid_dict = {}
+	#Error Check
+	if len(dataSet) < K:
+		print ("To form clusters for K=3 kMeans you need a minimum of three points")
+		exit()
+	#Create 3 subset of sorted python list
+	no_of_sets_needed = int(len(dataSet)/3)
+	chunks=[dataSet[x:x+no_of_sets_needed] for x in range(0, len(dataSet), no_of_sets_needed)]
+	total_chunk_len = len(chunks[0]) + len(chunks[1]) + len(chunks[2])
+	#print (len(dataSet))
+	#print (total_chunk_len)
+	while (total_chunk_len < len(dataSet)):
+		chunks[2].append(dataSet[total_chunk_len])
+		total_chunk_len = total_chunk_len + 1
+	#print (chunks[2])
+	for i in range(0,K):
+		new_centroid_dict = copy.deepcopy(Insert_Key (chunks[i],new_centroid_dict))
+	return new_centroid_dict
+
+def attach_To_Centroid(dataSet,cluster_map,type_distance):
 	for each_dataPoint in dataSet:
 		#Create an empty class type object
 		store_CentroidLabel = type('', (), {})()
 		min_dist = float(sys.maxsize)
-		###print ("Considering Pont",each_dataPoint.X_cordinate)
-		for Key in Cluster_map:
-			###print ("Considering Key",Key.X_cordinate)
-			#Euclidean Distance
-			if(type_distance == "L1"):
-				dist = math.sqrt((Key.X_cordinate - float(each_dataPoint.X_cordinate))**2 + (Key.Y_cordinate - float(each_dataPoint.Y_cordinate))**2)
-			elif(type_distance == "L2"):
-				dist = math.fabs(Key.X_cordinate - float(each_dataPoint.X_cordinate)) + math.fabs(Key.Y_cordinate - float(each_dataPoint.Y_cordinate))
-		
-			if (dist < min_dist):
-				min_dist = dist
-				store_CentroidLabel = Key
-		###print (store_CentroidLabel.X_cordinate,"Label_X")
+		#print ("Considering Point",each_dataPoints,X_cordinate)
+		for Key in cluster_map:
+			#print ("Considering Key",Key.X_cordinate)
+			for Key in cluster_map:
+				#Euclidean Distance
+				if (type_distance == "L1"):
+					dist = math.sqrt((Key.X_cordinate - float(each_dataPoint.X_cordinate))**2 + (Key.Y_cordinate - float(each_dataPoint.Y_cordinate))**2)
+				elif(type_distance == "L2"):
+					dist = math.fabs(Key.X_cordinate - float(each_dataPoint.X_cordinate)) + math.fabs(Key.Y_cordinate - float(each_dataPoint.Y_cordinate))
+
+				if(dist < min_dist):
+					min_dist =dist
+					store_CentroidLabel = Key
 		try:
-			Cluster_map[store_CentroidLabel].append(Datapoints(each_dataPoint.X_cordinate,each_dataPoint.Y_cordinate))
+			cluster_map[store_CentroidLabel].append(Datapoints(each_dataPoint.X_cordinate,each_dataPoint.Y_cordinate))
 		except KeyError:
 			print ("There was an Error with Cluster map centroid key")
-			exit()
-
-	#If any cluster is empty
-	#Assign one point at random from dataSet to empty cluster 
-	#Avoid empty clusters and 0 means
-
-	
-
-	return Cluster_map
-
-
+	return cluster_map
 
 def kmeans(dataSet,K):
 	#Initialize centroid Randomly - Iteration_#1
 	#Get the range for Centroid
-	Range_X,Range_Y = getRange(dataSet)
-
-	newVersion_Centroids = copy.deepcopy(Randomize_Centroid_Iteration_1(Range_X,Range_Y,K))
+	Sorted_dataSet = []
+	Sorted_dataSet = sorted(dataSet, key=lambda x: x.X_cordinate)
+	newVersion_Centroids = copy.deepcopy(Randomize_Centroid_Iteration_1(Sorted_dataSet,K))
 	newCentroid_dict = {}
 	for i in range(2):
 		if not bool(newCentroid_dict):
@@ -128,27 +111,28 @@ def kmeans(dataSet,K):
 		#Initialize book keeping variables
 		oldCentroid_dict = None
 
-		#Start the kMeans Algorithm
+		#start the kMeans Algorithm
 		while not AlgorithmStop(oldCentroid_dict,newCentroid_dict):
-		
-			#Assign Clustering label to each datapoints
+
+			#Assign Clustering label to each Datapoints
 			Cluster_Map = attach_To_Centroid(dataSet,newCentroid_dict,type_distance)
 
-			#Book Keeping
+			#Book keeping
 			oldCentroid_dict = copy.deepcopy(Cluster_Map)
 
-			#Recaluculate Centroids
-			newCentroid_dict = Update_Centroid_Location(Cluster_Map,dataSet)
-			break
+			#Recalculate Centroids
+			newCentroid_dict = Update_Centroid_Location(Cluster_Map)
 
 		#Print the Cluster Set
 		i = 1
-		#Remove after who have finished the algorithm
+		##IMPLEMENTATION COMMENT
+		#Remove after you have finished algorithm
 		print ("Cluster based on ",type_distance," distance",sep="")
 		for key in Cluster_Map:
-			print ("Cluster C",i," location:",key.X_cordinate,",",key.Y_cordinate,sep="")
+			print ("Cluster C",i," location:",key.X_cordinate,",",key.Y_cordinate,sep="",end="\n")
+			print ("Clustered Set:")
 			for value in Cluster_Map[key]:
-				print (value.X_cordinate,",",value.Y_cordinate,sep="",end="")
+				print (value.X_cordinate,",",value.Y_cordinate,sep="",end="\n")
 			i +=1
 			print ("")
 
@@ -163,8 +147,9 @@ def read_file():
 	# Fetch the dataSet as list of Datapoints
 	dataSet = []
 	for line in f:
-		cordinate_split = line.split(",")
-		dataSet.append(Datapoints(cordinate_split[0],cordinate_split[1]))
+		cordinate_split = line.strip().split(",")
+		dataSet.append(Datapoints(float(cordinate_split[0]),float(cordinate_split[1])))
+	#print (dataSet)
 	#print (dataSet[0].X_cordinate)
 	# Given: K = 3
 	kmeans(dataSet,3)
